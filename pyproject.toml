@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "compellent-colector"
+version = "0.1.0"
+description = "Program to collect metrics from Dell Compellent Storage API"
+authors = ["Jardel F. F. de Araujo <jardel.araujo@redeunifique.com.br>"]
+license = "GPL-3.0 License"
+
+[tool.poetry.dependencies]
+python = "^3.7"
+argparse = "1.4.0"
+elasticsearch7 = "7.12.1"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
