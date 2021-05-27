@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "compellent-colector"
+name = "compellent_colector"
 version = "0.1.0"
 description = "Program to collect metrics from Dell Compellent Storage API"
 authors = ["Jardel F. F. de Araujo <jardel.araujo@redeunifique.com.br>"]
