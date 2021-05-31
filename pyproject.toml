@@ -6,9 +6,10 @@ authors = ["Jardel F. F. de Araujo <jardel.araujo@redeunifique.com.br>"]
 license = "GPL-3.0 License"
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "!=3.3.*"
 argparse = "1.4.0"
-elasticsearch7 = "7.12.1"
+elasticsearch = "7.12.1"
+pandas = "1.2.4"
 
 [tool.poetry.dev-dependencies]
 

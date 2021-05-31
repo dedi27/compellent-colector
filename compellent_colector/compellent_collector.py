@@ -30,6 +30,11 @@
 
 import sys
 import os
+import compellent_colector.client as scc
+import argparse
 from datetime import datetime
 from elasticsearch7 import Elasticsearch
 
+teste = scc.Client(username='Admin', password='Dellsvcs1')
+
+teste.getListRelative('/StorageCenter/ScAlert/GetList', period='5m')
