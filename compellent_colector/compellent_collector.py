@@ -37,4 +37,4 @@ from elasticsearch7 import Elasticsearch
 
 teste = scc.Client(username='Admin', password='Dellsvcs1')
 
-teste.getListRelative('/StorageCenter/ScAlert/GetList', period='5m')
+#teste.getListRelative('/StorageCenter/ScAlert/GetList', period='5m')
