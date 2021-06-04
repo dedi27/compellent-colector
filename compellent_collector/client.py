@@ -22,7 +22,7 @@
 
     Criado por: Jardel F. F. de Araujo
     Data de criação: 27/05/2021
-    Data de modificação: 01/06/2021
+    Data de modificação: 04/06/2021
     Versao: 0.1.0
 '''
 
@@ -31,18 +31,21 @@ import os
 import pandas
 import requests
 import json
-import pprint
 import urllib3
 import re
 from requests.auth import HTTPBasicAuth
-from time import sleep
+from time import sleep, time
 
 urllib3.disable_warnings()
 
 # Classe para pegar as métricas da Storage Dell Compellent através da REST API
 class Client(object):
     # Inicializa o objeto da classe Client
-    def __init__(self, host='192.168.110.10', username='', password='', port='3033'):
+    def __init__(self, host='192.168.110.10', username='', password='', port='3033', timezone='-03:00'):
+        """
+            >>> param timezone: Fusohorário da data (ex.: -03:00) 
+        """
+        self.timezone = timezone
         self.api_base = 'api/rest'
         self.proto = 'https'
         self.host = host if 'DELLSC_HOST' not in os.environ else os.environ['DELLSC_HOST']
@@ -85,22 +88,23 @@ class Client(object):
             retry += 1
             sleep(0.3)
         if len(data) > 0:
-            self.res = requests.request(self.api_method, '%s' % api_url, headers=self.headers, verify=False, data=self.data)
+            self.res = requests.request(self.api_method, '%s' % api_url, headers=self.headers, verify=False, data=data)
         else:
             self.res = requests.request(self.api_method, '%s' % api_url, headers=self.headers, verify=False)
         return True
 
-    def _getListRelative(self, api, period, timezone='-03:00', acknowledged=''):
+    def _getListRelative(self, api, period, acknowledged):
         """
         Função interna retorna um json com a lista de alertas da Storage usando formato de tempo absoluto \n
         Parâmetros: 
           >>> api: url da API Dell Storage Center  
           >>> period: intervalo de tempo relativo () 
-          >>> param timezone: Fusohorário da data (ex.: -03:00) 
           >>> param acknowledged: Filtra os alertas pelo campo acknowledged (True ou False)
         """
-        startTime = pandas.Timestamp('now', tz=timezone) - pandas.to_timedelta(period)
-        startTime = startTime.strftime('%Y-%m-%dT%H:%M:%S%Z')
+        self.period = period
+        self.acknowledged = acknowledged
+        self.startTime = pandas.Timestamp('now', tz=self.timezone) - pandas.to_timedelta(self.period)
+        self.startTime = self.startTime.strftime('%Y-%m-%dT%H:%M:%S%Z')
         self.api_url = api
         self.api_method = 'POST'
         filter_relative = """
@@ -116,7 +120,7 @@ class Client(object):
         ]
     }
 }
-        """ % re.sub('UTC', '', startTime)
+        """ % re.sub('UTC', '', self.startTime)
         filter_relative_ack = """
 {
     "Filter": {
@@ -135,51 +139,95 @@ class Client(object):
         ]
     }
 }
-""" % (re.sub('UTC', '', startTime), acknowledged)
+""" % (re.sub('UTC', '', self.startTime), acknowledged)
         if len(acknowledged) > 0:
             if re.match('true|True|false|False', acknowledged):
-                self._apiRequest(self.api_url, self.api_method, data=filter_relative_ack)
+                self._apiRequest(self.api_url, data=filter_relative_ack)
         else:
-            self._apiRequest(self.api_url, self.api_method, data=filter_relative)
+            self._apiRequest(self.api_url, data=filter_relative)
         return sorted(self.res.json(), key=lambda x: x['createTime'])
 
-    # Método para retornar um JSON com uma lista da request solicitada usando tempo absoluto
-    def _getListAbsolute(self, api, startTime, endTime, timezone='-03:00', acknowledged=''):
+    def _getListAbsolute(self, api, startTime, endTime, acknowledged):
         """
-        Função interna retorna um json com a lista de alertas da Storage usando formato de tempo relativo \n
+        Função interna retorna um json com a lista de alertas da Storage usando formato de tempo absoluto \n
         Parâmetros: 
           >>> api: url da API Dell Storage Center  
           >>> startTime: data de início (formato: AAAA-MM-DDTHH:mm:ss ex.: 2021-01-01T12:00:00) 
           >>> param endTime: data final (formato: AAAA-MM-DDTHH:mm:ss ex.: 2021-01-01T23:59:00) 
-          >>> param timezone: Fusohorário da data (ex.: -03:00) 
           >>> param acknowledged: Filtra os alertas pelo campo acknowledged (True ou False)
         """
-        self.startTime = startTime + timezone
-        self.endTime = endTime + timezone
+        startTime = startTime + self.timezone
+        endTime = endTime + self.timezone
         self.api_method = 'POST'
         self.api_url = api
-
-
-
-        self._apiRequest(self.api_url, self.api_method, acknowledged)
-        return self.res.json()
+        filter_relative = """
+{
+    "Filter": {
+        "FilterType":"AND",
+        "Filters":[
+        {
+            "AttributeName":"createTime",
+            "AttributeValue":"%s",
+            "FilterType":"GreaterThan"
+        },
+        {
+            "AttributeName":"createTime",
+            "AttributeValue":"%s",
+            "FilterType":"LessThan"
+        }
+        ]
+    }
+}
+        """ % (startTime, endTime)
+        filter_relative_ack = """
+{
+    "Filter": {
+        "FilterType":"AND",
+        "Filters":[
+            {
+                "AttributeName":"createTime",
+                "AttributeValue":"%s",
+                "FilterType":"GreaterThan"
+            },
+            {
+            "AttributeName":"createTime",
+            "AttributeValue":"%s",
+            "FilterType":"LessThan"
+            },
+            {
+                "AttributeName":"acknowledged",
+                "AttributeValue":"%s",
+                "FilterType":"Equals"
+            }
+        ]
+    }
+}
+""" % (startTime, endTime, acknowledged)
+        if len(acknowledged) > 0:
+            if re.match('true|True|false|False', acknowledged):
+                self._apiRequest(self.api_url, data=filter_relative_ack)
+        else:
+            self._apiRequest(self.api_url, data=filter_relative)
+        return sorted(self.res.json(), key=lambda x: x['createTime'])
 
     def getListScAlertsRelative(self, period='5m', acknowledged=''):
         """
         Esta função retorna um json com a lista de alertas da Storage usando formato de tempo relativo
         """
         api_url = '/StorageCenter/ScAlert/GetList'        
-        #self.res = requests.request(self.api_method, '%s' % api_url, headers=self.headers, verify=False)
         self._getListRelative(api_url, period, acknowledged)
-        return pprint.pprint(self.res.json())
+        return self.res.json()
 
-    # Método para retornar os alertas da Storage usando tempo absoluto
     def getListScAlertsAbsolute(self, startTime, endTime, acknowledged=''):
-        """
+        """"
         Esta função retorna um json com a lista de alertas da Storage usando formato de tempo absoluto
+        Parâmetros: 
+          >>> startTime: data de início (formato: AAAA-MM-DDTHH:mm:ss ex.: 2021-01-01T12:00:00) 
+          >>> endTime: data final (formato: AAAA-MM-DDTHH:mm:ss ex.: 2021-01-01T23:59:00) 
+          >>> acknowledged: Filtra os alertas pelo campo acknowledged (True ou False)
         """
         api_url = '/StorageCenter/ScAlert/GetList'        
-        self.res = requests.request(self.api_method, '%s' % api_url, headers=self.headers, verify=False)
-        self._apiRequest(self.api_url, self.api_method)
-        self._get
-        return pprint.pprint(self.res.json())
+        self._getListAbsolute(api_url, startTime, endTime, acknowledged)
+        return self.res.json()
+
+#    def getListScCapabilities():

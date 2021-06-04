@@ -24,17 +24,33 @@
 
     Criado por: Jardel F. F. de Araujo
     Data de criação: 24/05/2021
-    Data de modificação: 26/05/2021
+    Data de modificação: 04/06/2021
     Versao: 0.1.0
 '''
 
 import sys
 import os
-import compellent_colector.client as scc
+import logging
+import compellent_collector.client as scc
 import argparse
 from datetime import datetime
-from elasticsearch7 import Elasticsearch
+from elasticsearch import Elasticsearch
 
-teste = scc.Client(username='Admin', password='Dellsvcs1')
+# Definições de log stdout
+stdout_log = logging.getLogger()
+stdout_log.setLevel(logging.WARN)
+log_handler = logging.StreamHandler(sys.stdout)
+log_handler.setLevel(logging.INFO)
+log_handler.setFormatter(logging.Formatter('%(message)s'))
+stdout_log.addHandler(log_handler)
 
-#teste.getListRelative('/StorageCenter/ScAlert/GetList', period='5m')
+
+def main():
+    stdout_log.setLevel(logging.INFO)
+    parser = argparse.ArgumentParser(prog='unifique-compellent-collector', description='Programa para coletar métricas da Storage Dell Compellent.')
+    args = parser.parse_args()
+    teste = scc.Client(username='Admin', password='Dellsvcs1')
+    print(teste.getListScAlertsRelative(period='1d'))
+
+if __name__ == "main":
+    main()

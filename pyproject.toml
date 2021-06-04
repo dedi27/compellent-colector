@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "compellent_colector"
+name = "compellent_collector"
 version = "0.1.0"
 description = "Program to collect metrics from Dell Compellent Storage API"
 authors = ["Jardel F. F. de Araujo <jardel.araujo@redeunifique.com.br>"]
@@ -16,3 +16,6 @@ pandas = "1.2.4"
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+unifique-compellent-collector = 'compellent_collector.compellent_collector:main'
