@@ -22,7 +22,7 @@
 
     Criado por: Jardel F. F. de Araujo
     Data de criação: 27/05/2021
-    Data de modificação: 04/06/2021
+    Data de modificação: 06/06/2021
     Versao: 0.1.0
 '''
 
@@ -88,12 +88,13 @@ class Client(object):
             retry += 1
             sleep(0.3)
         if len(data) > 0:
-            self.res = requests.request(self.api_method, '%s' % api_url, headers=self.headers, verify=False, data=data)
+            res = requests.request(self.api_method, '%s' % api_url, headers=self.headers, verify=False, data=data)
+            return res.json()
         else:
-            self.res = requests.request(self.api_method, '%s' % api_url, headers=self.headers, verify=False)
-        return True
+            res = requests.request(self.api_method, '%s' % api_url, headers=self.headers, verify=False)
+            return res.json()
 
-    def _getListRelative(self, api, period, acknowledged):
+    def _getTimeListRelative(self, api, period, acknowledged):
         """
         Função interna retorna um json com a lista de alertas da Storage usando formato de tempo absoluto \n
         Parâmetros: 
@@ -142,12 +143,14 @@ class Client(object):
 """ % (re.sub('UTC', '', self.startTime), acknowledged)
         if len(acknowledged) > 0:
             if re.match('true|True|false|False', acknowledged):
-                self._apiRequest(self.api_url, data=filter_relative_ack)
+                #self._apiRequest(self.api_url, data=filter_relative_ack)
+                return sorted(self._apiRequest(self.api_url, data=filter_relative_ack), key=lambda x: x['createTime'])
         else:
-            self._apiRequest(self.api_url, data=filter_relative)
-        return sorted(self.res.json(), key=lambda x: x['createTime'])
+            #self._apiRequest(self.api_url, data=filter_relative)
+            return sorted(self._apiRequest(self.api_url, data=filter_relative), key=lambda x: x['createTime'])
+        #return sorted(self.res.json(), key=lambda x: x['createTime'])
 
-    def _getListAbsolute(self, api, startTime, endTime, acknowledged):
+    def _getTimeListAbsolute(self, api, startTime, endTime, acknowledged):
         """
         Função interna retorna um json com a lista de alertas da Storage usando formato de tempo absoluto \n
         Parâmetros: 
@@ -205,18 +208,20 @@ class Client(object):
 """ % (startTime, endTime, acknowledged)
         if len(acknowledged) > 0:
             if re.match('true|True|false|False', acknowledged):
-                self._apiRequest(self.api_url, data=filter_relative_ack)
+                #self._apiRequest(self.api_url, data=filter_relative_ack)
+                return sorted(self._apiRequest(self.api_url, data=filter_relative_ack), key=lambda x: x['createTime'])
         else:
-            self._apiRequest(self.api_url, data=filter_relative)
-        return sorted(self.res.json(), key=lambda x: x['createTime'])
+            #self._apiRequest(self.api_url, data=filter_relative)
+            return sorted(self.res.json(), key=lambda x: x['createTime'])
+        #return sorted(self._apiRequest(self.api_url, data=filter_relative), key=lambda x: x['createTime'])
 
     def getListScAlertsRelative(self, period='5m', acknowledged=''):
         """
         Esta função retorna um json com a lista de alertas da Storage usando formato de tempo relativo
         """
         api_url = '/StorageCenter/ScAlert/GetList'        
-        self._getListRelative(api_url, period, acknowledged)
-        return self.res.json()
+        return self._getTimeListRelative(api_url, period, acknowledged)
+        #return self.res.json()
 
     def getListScAlertsAbsolute(self, startTime, endTime, acknowledged=''):
         """"
@@ -227,7 +232,20 @@ class Client(object):
           >>> acknowledged: Filtra os alertas pelo campo acknowledged (True ou False)
         """
         api_url = '/StorageCenter/ScAlert/GetList'        
-        self._getListAbsolute(api_url, startTime, endTime, acknowledged)
-        return self.res.json()
+        return self._getTimeListAbsolute(api_url, startTime, endTime, acknowledged)
+        #return self.res.json()
 
-#    def getListScCapabilities():
+    def getScCapabilities(self):
+        """"
+        Esta função retorna um json com a lista de capacidades da Storage
+        """
+        api_url = '/StorageCenter/ScCapabilities/GetList'
+        self.api_method = 'POST'
+        return self._apiRequest(api_url)
+
+    def getScConfiguration(self):
+        """"
+        Esta função retorna um json com a lista de configurações da Storage
+        """
+        api_url = '/StorageCenter/ScConfiguration'
+        self.api_method = 'GET'
