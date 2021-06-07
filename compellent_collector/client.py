@@ -41,20 +41,20 @@ urllib3.disable_warnings()
 # Classe para pegar as métricas da Storage Dell Compellent através da REST API
 class Client(object):
     # Inicializa o objeto da classe Client
-    def __init__(self, host='192.168.110.10', username='', password='', port='3033', timezone='-03:00'):
+    def __init__(self, host='192.168.110.10', username='', password='', protocol='https', verify_SSL=False,  port='3033', timezone='-03:00'):
         """
             >>> param timezone: Fusohorário da data (ex.: -03:00) 
         """
         self.timezone = timezone
         self.api_base = 'api/rest'
-        self.proto = 'https'
+        self.proto = protocol
+        self.verify_SSL = verify_SSL
         self.host = host if 'DELLSC_HOST' not in os.environ else os.environ['DELLSC_HOST']
         self.usename = username if 'DELLSC_USERNAME' not in os.environ else os.environ['DELLSC_USERNAME']
         self.password = password if 'DELLSC_PASSWORD' not in os.environ else os.environ['DELLSC_PASSWORD']
         self.port = port if 'DELLSC_PASSWORD' not in os.environ else os.environ['DELLSC_PASSWORD']
         self.api_method = 'POST'
         self.headers = {'x-dell-api-version': '5.2', 'Cookie': '', 'Content-Type': 'application/json'}
-        self.api_login = '%s://%s:%s/%s/ApiConnection/Login' % (self.proto, self.host, self.port, self.api_base)
         self.login()
 
     # Método para fazer o login e armazenar o Cookie
@@ -63,7 +63,11 @@ class Client(object):
             return  True
         else:
             self.api_method = 'POST'
-            self.res = requests.request(self.api_method, '%s' % self.api_login, headers=self.headers, verify=False, auth=HTTPBasicAuth(self.usename, self.password))
+            api_login = '%s://%s:%s/%s/ApiConnection/Login' % (self.proto, self.host, self.port, self.api_base)
+            if self.proto == 'https':
+                self.res = requests.request(self.api_method, '%s' % api_login, headers=self.headers, verify=self.verify_SSL, auth=HTTPBasicAuth(self.usename, self.password))
+            else:
+                self.res = requests.request(self.api_method, '%s' % api_login, headers=self.headers, auth=HTTPBasicAuth(self.usename, self.password))
             if self.res.status_code == 200:
                 self.headers['Cookie'] = '%s=%s' % (self.res.cookies.keys()[0], self.res.cookies.values()[0])
                 return True
@@ -73,7 +77,10 @@ class Client(object):
                 return False
 
     def _isClientLogged(self):
-        apiTest = requests.get('%s://%s:%s/%s%s' % (self.proto, self.host, self.port, self.api_base, '/ApiConnection'), verify=False)
+        if self.proto == 'https':
+            apiTest = requests.get('%s://%s:%s/%s%s' % (self.proto, self.host, self.port, self.api_base, '/ApiConnection'), verify=self.verify_SSL)
+        else:
+            apiTest = requests.get('%s://%s:%s/%s%s' % (self.proto, self.host, self.port, self.api_base, '/ApiConnection'))
         if apiTest.status_code == 401:
             self.headers['Cookie'] = ''
             return False
